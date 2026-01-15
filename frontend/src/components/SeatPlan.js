@@ -19,8 +19,10 @@ const movies = [
   },
 ];
 
-function SeatPlan({ movie, selectedSession, user }) {
-  const BASE_URL = process.env.REACT_APP_BASE_URL;
+function SeatPlan({ movie, selectedSession }) {
+  const BASE_URL = "http://localhost:8080/api/v1";
+
+
   const [selectedSeats, setSelectedSeats] = useState([]);
   const [successPopupVisible, setSuccessPopupVisible] = useState(false);
   const [recommendedSeat, setRecommendedSeat] = useState(null);
@@ -177,13 +179,6 @@ function SeatPlan({ movie, selectedSession, user }) {
     const isAnySeatSelected = selectedSeats.length > 0;
 
     if (isAnySeatSelected) {
-      const authenticatedId = user?.id || user?.userId || localStorage.getItem('userId');
-      if (!authenticatedId) {
-          alert("Please log in to complete your booking.");
-          navigate('/login');
-          return;
-      }
-
       const orderSeats = selectedSeats;
       const updatedOccupiedSeats = [...orderSeats, ...occupiedSeats];
       const movieTypes = getMovieTypes(movie.id);
@@ -196,8 +191,8 @@ function SeatPlan({ movie, selectedSession, user }) {
         .join(', ') || movie.original_language || 'N/A';
 
       const order = {
-        customerId: authenticatedId,
-        userName: appliedPromo ? `${user?.name} PROMO:${appliedPromo?.code}` : user?.name,
+        customerId: userId || Math.floor(Math.random() * 1000000),
+        userName: userName || '',
         orderDate: new Date().toISOString(),
         seats: [...orderSeats, ...occupiedSeats],
         seat: orderSeats,

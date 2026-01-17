@@ -1,6 +1,18 @@
 -- Test Promo Codes for UC-19
 -- Run this SQL script to populate the database with sample promo codes
-
+-- Create table if it doesn't exist
+CREATE TABLE IF NOT EXISTS promo_codes (
+    id INT PRIMARY KEY,
+    code VARCHAR(50) NOT NULL,
+    description VARCHAR(255),
+    discount_type VARCHAR(50),
+    discount_value DECIMAL(10,2),
+    expiry_date DATE,
+    usage_limit INT,
+    used_count INT DEFAULT 0,
+    active BOOLEAN DEFAULT TRUE,
+    created_at DATETIME DEFAULT NOW()
+);
 -- Valid Percentage Discounts
 INSERT INTO promo_codes (id, code, description, discount_type, discount_value, expiry_date, usage_limit, used_count, active, created_at)
 VALUES 

@@ -1,6 +1,3 @@
-import React from 'react';
-import { FaTrashAlt } from 'react-icons/fa';
-
 const RemoveFavoriteModal = ({ isOpen, onClose, onConfirm, movieName, posterPath }) => {
   if (!isOpen) return null;
 

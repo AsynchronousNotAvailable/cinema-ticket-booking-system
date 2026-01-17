@@ -123,7 +123,7 @@ function SeatPlan({ movie, selectedSession, user }) {
       totalPrice: totalPrice,
       userName: user?.name
     };
-
+    console.log("Order details:", myOrder);
     const res = await BuyTickets(BASE_URL, myOrder);
     if (res?.orderId) {
       setPendingOrder(res);
@@ -134,6 +134,7 @@ function SeatPlan({ movie, selectedSession, user }) {
   };
 
   const handlePaymentConfirm = async (paymentDetails) => {
+    console.log("Processing payment with details:", paymentDetails);
     if (!pendingOrder) return;
 
     try {

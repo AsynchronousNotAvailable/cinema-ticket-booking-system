@@ -15,144 +15,57 @@ import { TOTAL_SEATS, ALL_SEATS_DATA } from '../utils/SeatConstants';
 import { calculatePricing } from '../utils/PriceCalculations';
 
 function SeatPlan({ movie, selectedSession, user }) {
+  const navigate = useNavigate(); // ✅ you are using navigate, so you must define it
   const BASE_URL = process.env.REACT_APP_BASE_URL;
-  const [selectedSeats, setSelectedSeats] = useState([]);
-  const [successPopupVisible, setSuccessPopupVisible] = useState(false);
-  const [recommendedSeat, setRecommendedSeat] = useState(null);
-  const [movieSession, setMovieSession] = useState(null);
-  const [seatPlan, setSeatPlan] = useState(null);
-  const [numSeats, setNumSeats] = useState(1);
 
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [pendingOrder, setPendingOrder] = useState(null);
-
-  const [promoCode, setPromoCode] = useState('');
-  const [appliedPromo, setAppliedPromo] = useState(null);
-  const [promoMessage, setPromoMessage] = useState('');
-  const [promoError, setPromoError] = useState(false);
-
-  // --- DATA FETCHING & SYNC ---
-  useEffect(() => {
-    if (selectedSession) {
-      setMovieSession(selectedSession);
-      setSelectedSeats([]);
-      setRecommendedSeat(null);
-    }
-  }, [selectedSession]);
-
-  useEffect(() => {
-    const fetchSeatPlanData = async () => {
-      if (movieSession?.time) {
-        try {
-          const data = await getSeatPlan(movie.id, movieSession);
-          setSeatPlan(data);
-        } catch (error) {
-          console.error('Error fetching seat plan:', error);
-        }
-      }
-    };
-    fetchSeatPlanData();
-  }, [movie.id, movieSession]);
-
-  // Polling for updates every 5s (Scenario 4.1: Background Refresh)
-  useEffect(() => {
-    const refreshInterval = setInterval(async () => {
-      if (movieSession?.time && !showPaymentModal) {
-        try {
-          const latestData = await getSeatPlan(movie.id, movieSession);
-          const takenSeats = selectedSeats.filter(seat => latestData.includes(seat));
-
-          if (takenSeats.length > 0) {
-            alert(`Seat ${takenSeats.map(s => s + 1).join(', ')} no longer available.`);
-            setSelectedSeats(prev => prev.filter(s => !latestData.includes(s)));
-            setRecommendedSeat(null);
-          }
-          setSeatPlan(latestData);
-        } catch (e) { console.error(e); }
-      }
-    }, 5000);
-    return () => clearInterval(refreshInterval);
-  }, [movie.id, movieSession, selectedSeats, showPaymentModal]);
-
-  const occupiedSeats = seatPlan || [];
-  const isSoldOut = occupiedSeats.length >= TOTAL_SEATS;
-  const isAnySeatSelected = selectedSeats.length > 0;
-  const selectedSeatText = selectedSeats.map((seat) => seat + 1).join(', ');
-
-  const { subtotal, bookingFee, tax, discount, totalPrice } = calculatePricing(selectedSeats, appliedPromo);
-
-  const handleRecommendSeats = () => {
-    // Uses the sophisticated logic from your utility file
-    const recs = getRecommendedSeats(numSeats, occupiedSeats);
-    if (!recs) {
-      alert(`No ${numSeats} consecutive seats available in a single row!`);
-    }
-    setRecommendedSeat(recs);
-  };
-
-  const handleApplyPromoCode = async () => {
-    if (!promoCode.trim()) {
-      setPromoMessage('Please enter a promo code');
-      setPromoError(true);
-      return;
-    }
-    const result = await ValidatePromoCode(promoCode.trim().toUpperCase());
-    if (result.success) {
-      setAppliedPromo(result.data);
-      setPromoMessage(`Promo code applied!`);
-      setPromoError(false);
-    } else {
-      setAppliedPromo(null);
-      setPromoMessage(result.message);
-      setPromoError(true);
-    }
-  };
-
-  const handleRemovePromoCode = () => {
-    setAppliedPromo(null);
-    setPromoCode('');
-    setPromoMessage('');
-    setPromoError(false);
-  };
+  // ... your states + effects
 
   const handleButtonClick = async (e) => {
-    if (e) e.preventDefault(); // Prevent form submission if triggered by a button in a form
+    e?.preventDefault();
 
-    if (isAnySeatSelected) {
-      const authenticatedId = user?.id || user?.userId || localStorage.getItem('userId');
-      if (!authenticatedId) {
-          alert("Please log in to complete your booking.");
-          navigate('/login');
-          return;
-      }
+    if (!selectedSeats.length) return;
 
+    const authenticatedId =
+      user?.id || user?.userId || localStorage.getItem("userId");
+
+    if (!authenticatedId) {
+      alert("Please log in to complete your booking.");
+      navigate("/login");
+      return;
+    }
+
+    try {
       const orderSeats = selectedSeats;
       const updatedOccupiedSeats = [...orderSeats, ...occupiedSeats];
+
       const movieTypes = getMovieTypes(movie.id);
-      const movieCast = movie.credits?.cast
-        ?.slice(0, 5)
-        .map((actor) => actor.name)
-        .join(', ') || 'N/A';
-      const spokenLanguages = movie.spoken_languages
-        ?.map((lang) => lang.english_name)
-        .join(', ') || movie.original_language || 'N/A';
+      const movieCast =
+        movie.credits?.cast?.slice(0, 5).map((actor) => actor.name).join(", ") ||
+        "N/A";
+
+      const spokenLanguages =
+        movie.spoken_languages?.map((lang) => lang.english_name).join(", ") ||
+        movie.original_language ||
+        "N/A";
 
       const order = {
         customerId: authenticatedId,
-        userName: appliedPromo ? `${user?.name} PROMO:${appliedPromo?.code}` : user?.name,
+        userName: appliedPromo
+          ? `${user?.name} PROMO:${appliedPromo?.code}`
+          : user?.name,
         orderDate: new Date().toISOString(),
-        seats: [...orderSeats, ...occupiedSeats],
+        seats: updatedOccupiedSeats,
         seat: orderSeats,
         movie: {
           id: movie.id,
           title: movie.title,
-          genres: movie.genres.map((genre) => genre.name).join(', '),
+          genres: movie.genres.map((genre) => genre.name).join(", "),
           runtime: movie.runtime,
           language: movie.original_language,
-          price: movies[0].price,
-          type: movieTypes.join(', '),
+          price: movie.price, // ✅ movies[0].price was undefined
+          type: movieTypes.join(", "),
           cast: movieCast,
-          spokenLanguages: spokenLanguages,
+          spokenLanguages,
         },
       };
 
@@ -170,27 +83,32 @@ function SeatPlan({ movie, selectedSession, user }) {
         movieCast: order.movie.cast,
         spokenLanguages: order.movie.spokenLanguages,
         seat: order.seat,
-        userName: appliedPromo ? `${order.userName} PROMO:${appliedPromo.code}` : order.userName,
+        userName: appliedPromo
+          ? `${order.userName} PROMO:${appliedPromo.code}`
+          : order.userName,
       };
 
-      // Backend handles seat reservation, so we don't need to call updateSeatsInHall
-      // The order creation endpoint will reserve seats automatically
       const orderResponse = await BuyTickets(BASE_URL, myOrder);
 
       if (orderResponse && orderResponse.orderId) {
-        // Success: Order created with PENDING status
         setPendingOrder(orderResponse);
         setShowPaymentModal(true);
       } else {
-        // Failure: Likely a concurrency issue (seats taken)
-        console.error('Failed to create order');
-        alert('Failed to create booking. The seats might have been taken. Please try again.');
+        console.error("Failed to create order");
+        alert(
+          "Failed to create booking. The seats might have been taken. Please try again."
+        );
       }
     } catch (error) {
-      console.error('Order creation error:', error);
-      alert('An error occurred while creating your order. Please check your connection.');
+      console.error("Order creation error:", error);
+      alert(
+        "An error occurred while creating your order. Please check your connection."
+      );
     }
   };
+
+  // ... return JSX
+}
 
   const handlePaymentConfirm = async (paymentDetails) => {
     if (!pendingOrder) return;
@@ -210,7 +128,7 @@ function SeatPlan({ movie, selectedSession, user }) {
     }
   };
 
-  return (
+ return (
     <div className='flex flex-col items-center'>
       {/* Header Section */}
       <div className='w-full md:w-1/2 lg:w-2/3 px-6'>
@@ -353,6 +271,6 @@ function SeatPlan({ movie, selectedSession, user }) {
     </div>
 
   );
-}
+
 
 export default SeatPlan;

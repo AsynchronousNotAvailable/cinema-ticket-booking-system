@@ -10,12 +10,16 @@ function PaymentModal({ isOpen, onClose, onConfirm, priceBreakdown }) {
 
   if (!isOpen) return null;
 
+  // src/components/PaymentModal.js
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsProcessing(true);
 
     const paymentDetails = {
       paymentMethod,
+      // Add the total amount here so the backend can verify it
+      amount: priceBreakdown?.total,
       cardNumber: paymentMethod === 'Card' ? cardNumber : undefined,
       cardName: paymentMethod === 'Card' ? cardName : undefined,
       expiryDate: paymentMethod === 'Card' ? expiryDate : undefined,
@@ -30,7 +34,7 @@ function PaymentModal({ isOpen, onClose, onConfirm, priceBreakdown }) {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md mx-4">
         <h2 className="text-2xl font-bold mb-4">Complete Payment</h2>
-        
+
         {/* Price Summary */}
         <div className="bg-gray-100 p-4 rounded mb-4">
           <div className="flex justify-between mb-2">
@@ -151,7 +155,7 @@ function PaymentModal({ isOpen, onClose, onConfirm, priceBreakdown }) {
           {paymentMethod === 'Cash' && (
             <div className="mb-4 p-4 bg-yellow-50 rounded">
               <p className="text-sm text-yellow-800">
-                Please collect your ticket at the cinema counter before the show starts. 
+                Please collect your ticket at the cinema counter before the show starts.
                 Bring this booking confirmation.
               </p>
             </div>

@@ -31,12 +31,12 @@ function NavBar({ user, onSearch, onLogin, onLogout }) {
           <div className='lg:flex lg:justify-center min-[200px]:space-x-8 sm:space-x-8 lg:space-x-4'>
             {user ? (
               <>
-                <a
+                {/* <a
                   href='/booking-history'
                   className={`bg-white text-red-500 hover:text-white hover:bg-red-700 rounded px-3 py-1 text-sm font-semibold cursor-pointer h-9 flex items-center justify-center`}
                 >
                   My Bookings
-                </a>
+                </a> */}
                 <a
                   href='/profile'
                   className={`bg-white text-red-500 hover:text-white hover:bg-red-700 rounded px-3 py-1 text-sm font-semibold cursor-pointer h-9 flex items-center justify-center`}

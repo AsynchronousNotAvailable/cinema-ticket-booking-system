@@ -64,7 +64,7 @@ code {
 .Cinema .screen {
   height: 80px;
   background: white;
-  width: 100%;
+  width: 280px;
   transform: rotateX(-30deg) scale(1.2);
   box-shadow: 0 3px 10px 2px;
 }
@@ -103,6 +103,29 @@ code {
   border: 1px solid #2ECC71;
   animation: show-off 0.8s;
   visibility: hidden;
+}
+
+/* Normal Seat */
+.seat.normal { background-color: #cbd5e1; }
+
+/* Premium Seat */
+.seat.premium { 
+  background-color: #60a5fa; 
+  border: 2px solid #2563eb; 
+}
+
+/* VIP Seat */
+.seat.vip { 
+  background-color: #fbbf24; 
+  box-shadow: 0 0 5px rgba(217, 119, 6, 0.5);
+}
+
+/* Couple Seat: Spans 2 grid spaces */
+.seat.couple {
+  grid-column: span 2; 
+  width: 100%; /* Fill the 2-column span */
+  background-color: #f472b6;
+  border-radius: 15px;
 }
 
 @keyframes show-off {

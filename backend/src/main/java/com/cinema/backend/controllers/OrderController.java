@@ -77,30 +77,41 @@ public class OrderController {
             newOrder.setOrderStatus("PENDING");
 
             // UC-19: Handle promo code if provided
+            // 1. First, calculate the CORRECT subtotal using seat types
+            double subtotal = 0.0;
+            List<Integer> vipSeats = Arrays.asList(27, 28, 35, 36);
+            for (Integer seatId : newOrder.getSeat()) {
+                if (vipSeats.contains(seatId))
+                    subtotal += 25.0;
+                else if (seatId >= 56)
+                    subtotal += 30.0;
+                else if (seatId < 8)
+                    subtotal += 15.0;
+                else
+                    subtotal += 10.0;
+            }
+
+            // 2. Now handle the Promo Code using that accurate subtotal
             double discount = 0.0;
             String promoCodeApplied = null;
 
             if (newOrder.getUserName() != null && newOrder.getUserName().contains("PROMO:")) {
-                // Extract promo code from userName field (temporary solution)
                 String[] parts = newOrder.getUserName().split("PROMO:");
                 if (parts.length == 2) {
                     String promoCode = parts[1].trim();
-                    newOrder.setUserName(parts[0].trim()); // Remove promo code from userName
+                    newOrder.setUserName(parts[0].trim());
 
-                    // Validate and apply promo code
                     Optional<PromoCode> promoOptional = promoCodeRepository.findByCode(promoCode.toUpperCase());
                     if (promoOptional.isPresent()) {
                         PromoCode promo = promoOptional.get();
                         if (promo.isValid()) {
-                            // Calculate discount based on type
-                            double baseAmount = newOrder.getMoviePrice() * newOrder.getSeat().size();
+                            // USE THE REAL SUBTOTAL HERE
                             if ("PERCENTAGE".equals(promo.getDiscountType())) {
-                                discount = (baseAmount * promo.getDiscountValue()) / 100.0;
+                                discount = (subtotal * promo.getDiscountValue()) / 100.0;
                             } else if ("FIXED_AMOUNT".equals(promo.getDiscountType())) {
                                 discount = promo.getDiscountValue();
                             }
                             promoCodeApplied = promo.getCode();
-                            System.out.println("Promo code " + promoCode + " applied. Discount: $" + discount);
                         }
                     }
                 }
@@ -109,7 +120,7 @@ public class OrderController {
             // UC-18: Calculate price breakdown with discount
             PriceBreakdownDTO priceBreakdown = calculatePriceBreakdown(
                     newOrder.getMoviePrice(),
-                    newOrder.getSeat().size(),
+                    newOrder.getSeat(),
                     discount);
 
             // Store price breakdown in order
@@ -211,40 +222,91 @@ public class OrderController {
     }
 
     // UC-18: Calculate price breakdown with booking fees and taxes
-    private PriceBreakdownDTO calculatePriceBreakdown(double basePrice, int seatCount, double discount) {
-        // Configurable pricing rules (can be moved to application.properties)
-        final double BOOKING_FEE_RATE = 0.10; // 10% booking fee
-        final double TAX_RATE = 0.10; // 10% tax rate
+    // private PriceBreakdownDTO calculatePriceBreakdown(double basePrice, int
+    // seatCount, double discount) {
+    // // Configurable pricing rules (can be moved to application.properties)
+    // final double BOOKING_FEE_RATE = 0.10; // 10% booking fee
+    // final double TAX_RATE = 0.10; // 10% tax rate
 
-        // Calculate subtotal
-        double subtotal = basePrice * seatCount;
+    // // Calculate subtotal
+    // double subtotal = basePrice * seatCount;
 
-        // Calculate booking fee
-        double bookingFee = subtotal * BOOKING_FEE_RATE;
+    // // Calculate booking fee
+    // double bookingFee = subtotal * BOOKING_FEE_RATE;
 
-        // Calculate tax on (subtotal + booking fee - discount)
-        double taxableAmount = subtotal + bookingFee - discount;
-        double tax = taxableAmount * TAX_RATE;
+    // // Calculate tax on (subtotal + booking fee - discount)
+    // double taxableAmount = subtotal + bookingFee - discount;
+    // double tax = taxableAmount * TAX_RATE;
 
-        // Calculate final total
-        double total = subtotal + bookingFee + tax - discount;
+    // // Calculate final total
+    // double total = subtotal + bookingFee + tax - discount;
 
-        // Ensure total is not negative
-        if (total < 0) {
-            total = 0;
+    // // Ensure total is not negative
+    // if (total < 0) {
+    // total = 0;
+    // }
+
+    // PriceBreakdownDTO breakdown = new PriceBreakdownDTO(
+    // basePrice,
+    // seatCount,
+    // subtotal,
+    // bookingFee,
+    // tax,
+    // discount,
+    // total);
+
+    // System.out.println("Price Breakdown: " + breakdown);
+    // return breakdown;
+    // }
+    // UPDATED HELPER METHOD
+    private PriceBreakdownDTO calculatePriceBreakdown(double basePrice, List<Integer> seats, double discount) {
+        // Add a "NEW" tag to your print statement
+        final double BOOKING_FEE_RATE = 0.10;
+        final double TAX_RATE = 0.10;
+
+        double subtotal = 0.0;
+        List<Integer> vipSeats = Arrays.asList(27, 28, 35, 36);
+
+        // 1. Calculate Subtotal using specific seat rules
+        for (Integer seatId : seats) {
+            if (vipSeats.contains(seatId)) {
+                subtotal += 25.0; // VIP
+            } else if (seatId >= 56) {
+                subtotal += 30.0; // COUPLE
+            } else if (seatId < 8) {
+                subtotal += 15.0; // PREMIUM
+            } else {
+                subtotal += 10.0; // NORMAL
+            }
         }
 
-        PriceBreakdownDTO breakdown = new PriceBreakdownDTO(
-                basePrice,
-                seatCount,
-                subtotal,
-                bookingFee,
-                tax,
-                discount,
-                total);
+        // 2. Calculate Fee
+        double bookingFee = subtotal * BOOKING_FEE_RATE;
 
-        System.out.println("Price Breakdown: " + breakdown);
-        return breakdown;
+        // 3. Calculate Taxable Amount (Matches your Frontend Utility)
+        // Formula: (Subtotal + Fee - Discount) * TaxRate
+        double taxableAmount = subtotal + bookingFee - discount;
+        if (taxableAmount < 0)
+            taxableAmount = 0;
+
+        double tax = taxableAmount * TAX_RATE;
+
+        // 4. Calculate Final Total
+        double total = subtotal + bookingFee + tax - discount;
+
+        if (total < 0)
+            total = 0;
+        System.out.println("DEBUG - NEW LOGIC RUNNING - Subtotal: " + subtotal);
+
+        System.out.println("Price Breakdown:" + basePrice
+                + ", SeatCount=" + seats.size()
+                + ", Subtotal=" + subtotal
+                + ", BookingFee=" + bookingFee
+                + ", Tax=" + tax
+                + ", Discount=" + discount
+                + ", Total=" + total);
+
+        return new PriceBreakdownDTO(basePrice, seats.size(), subtotal, bookingFee, tax, discount, total);
     }
 
     // Helper method to reserve seats

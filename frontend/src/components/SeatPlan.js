@@ -173,9 +173,12 @@ function SeatPlan({ movie, selectedSession, user }) {
         setPendingOrder(orderResponse);
         setShowPaymentModal(true);
       } else {
-        // Failure: Likely a concurrency issue (seats taken)
-        console.error('Failed to create order');
-        alert('Failed to create booking. The seats might have been taken. Please try again.');
+        // Failure: Check for specific error message from backend
+        console.error('Failed to create order:', orderResponse);
+        const errorMessage = orderResponse?.message || 
+                           orderResponse?.error || 
+                           'Failed to create booking. The seats might have been taken. Please try again.';
+        alert(errorMessage);
       }
     } catch (error) {
       console.error('Order creation error:', error);

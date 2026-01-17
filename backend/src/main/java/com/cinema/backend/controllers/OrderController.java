@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.Locale;
 
 @RestController
 public class OrderController {
@@ -178,47 +179,43 @@ public class OrderController {
 
     // Helper method to validate session time
     private boolean validateSessionTime(String sessionTime) {
-        // TODO: For now, allow all bookings for testing purposes
-        // Will enforce strict validation when implementing payment flow
-        System.out
-                .println("Validating session time: " + sessionTime + " (Currently allowing all sessions for testing)");
-        return true;
+        try {
+            // Parse the session time (e.g., "09:15 AM")
+            SimpleDateFormat sdf = new SimpleDateFormat("hh:mm a", Locale.ENGLISH);
+            sdf.setLenient(false);
 
-        /*
-         * Commented out for testing - uncomment when ready for production
-         * try {
-         * // Parse the session time (e.g., "09:15 AM")
-         * SimpleDateFormat sdf = new SimpleDateFormat("hh:mm a", Locale.ENGLISH);
-         * sdf.setLenient(false);
-         * 
-         * // Get today's date
-         * Calendar sessionCal = Calendar.getInstance();
-         * Date parsedTime = sdf.parse(sessionTime);
-         * 
-         * // Set the parsed time to today's date
-         * Calendar timeCal = Calendar.getInstance();
-         * timeCal.setTime(parsedTime);
-         * sessionCal.set(Calendar.HOUR_OF_DAY, timeCal.get(Calendar.HOUR_OF_DAY));
-         * sessionCal.set(Calendar.MINUTE, timeCal.get(Calendar.MINUTE));
-         * sessionCal.set(Calendar.SECOND, 0);
-         * sessionCal.set(Calendar.MILLISECOND, 0);
-         * 
-         * Date sessionDateTime = sessionCal.getTime();
-         * Date currentTime = new Date();
-         * 
-         * // Check if session is not in the past (allow if session is in the future or
-         * // within 30 minutes)
-         * long diffInMinutes = (sessionDateTime.getTime() - currentTime.getTime()) /
-         * (60 * 1000);
-         * return diffInMinutes >= -30; // Allow booking up to 30 minutes after session
-         * start
-         * } catch (ParseException e) {
-         * // If parsing fails, allow the booking (might be a different format)
-         * System.out.println("Failed to parse session time: " + sessionTime +
-         * ". Allowing booking.");
-         * return true;
-         * }
-         */
+            // Get today's date
+            Calendar sessionCal = Calendar.getInstance();
+            Date parsedTime = sdf.parse(sessionTime);
+
+            // Set the parsed time to today's date
+            Calendar timeCal = Calendar.getInstance();
+            timeCal.setTime(parsedTime);
+            sessionCal.set(Calendar.HOUR_OF_DAY, timeCal.get(Calendar.HOUR_OF_DAY));
+            sessionCal.set(Calendar.MINUTE, timeCal.get(Calendar.MINUTE));
+            sessionCal.set(Calendar.SECOND, 0);
+            sessionCal.set(Calendar.MILLISECOND, 0);
+
+            Date sessionDateTime = sessionCal.getTime();
+            Date currentTime = new Date();
+
+            // Check if session is not in the past (allow if session is in the future or
+            // within 30 minutes of start)
+            long diffInMinutes = (sessionDateTime.getTime() - currentTime.getTime()) / (60 * 1000);
+            System.out.println("Session time: " + sessionTime + ", Current time: "
+                    + new SimpleDateFormat("hh:mm a").format(currentTime) +
+                    ", Minutes until session: " + diffInMinutes);
+
+            if (diffInMinutes < -30) {
+                System.out.println("Session has already started (more than 30 minutes ago)");
+                return false; // Session is in the past
+            }
+            return true; // Allow booking
+        } catch (ParseException e) {
+            // If parsing fails, reject the booking
+            System.out.println("Failed to parse session time: " + sessionTime + ". Rejecting booking.");
+            return false;
+        }
     }
 
     // UC-18: Calculate price breakdown with booking fees and taxes

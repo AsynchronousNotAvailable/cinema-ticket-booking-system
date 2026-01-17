@@ -8,18 +8,19 @@ async function BuyTickets(BASE_URL, formData) {
       body: JSON.stringify(formData),
     });
 
+    const data = await response.json();
+
     if (response.ok) {
-      const data = await response.json();
       console.log('Order successful', data);
       return data; // Return order data including orderId and priceBreakdown
     } else {
-      const errorData = await response.json().catch(() => ({}));
-      console.error('Order failed:', response.status, errorData);
-      return null;
+      // Return error response so frontend can display proper message
+      console.error('Order failed:', response.status, data);
+      return data; // Return backend error with message field
     }
   } catch (error) {
     console.error('Error occurred while ordering:', error);
-    return null;
+    return { error: 'Network error', message: error.message };
   }
 }
 

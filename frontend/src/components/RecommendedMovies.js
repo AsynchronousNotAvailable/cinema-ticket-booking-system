@@ -54,9 +54,10 @@ const RecommendedMovies = () => {
       if (userId) {
         const recommendedMoviesData = await GetRecommendedMovies(userId);
         if (
-          recommendedMoviesData &&
-          recommendedMoviesData.movieGenres.length > 0
-        ) {
+        recommendedMoviesData &&
+        Array.isArray(recommendedMoviesData.movieGenres) &&
+        recommendedMoviesData.movieGenres.length > 0
+     ) {
           const recommendedGenres = Object.keys(genres).filter((genre) =>
             recommendedMoviesData.movieGenres.includes(genre),
           );

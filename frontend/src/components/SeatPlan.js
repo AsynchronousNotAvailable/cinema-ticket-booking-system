@@ -3,34 +3,110 @@ import { useNavigate } from 'react-router-dom';
 import BuyTickets from '../API/BuyTickets';
 import MakePayment from '../API/MakePayment';
 import getSeatPlan from '../API/GetSeatPlan';
-import updateSeatsInHall from '../API/UpdateSeatsInHall';
-import generateRandomOccupiedSeats from '../utils/GenerateRandomOccupiedSeats';
 import getMovieTypes from '../utils/getMovieTypes';
 import SeatSelector from './SeatSelector';
 import SeatShowcase from './SeatShowcase';
 import PaymentModal from './PaymentModal';
 import ValidatePromoCode from '../API/ValidatePromoCode';
 import { getRecommendedSeats } from '../utils/SeatRecommendationEngine';
-import { TOTAL_SEATS, ALL_SEATS_DATA } from '../utils/SeatConstants';
+import { TOTAL_SEATS } from '../utils/SeatConstants';
 import { calculatePricing } from '../utils/PriceCalculations';
 
 function SeatPlan({ movie, selectedSession, user }) {
-  const navigate = useNavigate(); // ✅ you are using navigate, so you must define it
+  const navigate = useNavigate();
   const BASE_URL = process.env.REACT_APP_BASE_URL;
 
-  // ... your states + effects
+  const [selectedSeats, setSelectedSeats] = useState([]);
+  const [successPopupVisible, setSuccessPopupVisible] = useState(false);
+  const [recommendedSeat, setRecommendedSeat] = useState(null);
+  const [movieSession, setMovieSession] = useState(null);
+  const [seatPlan, setSeatPlan] = useState(null);
+  const [numSeats, setNumSeats] = useState(1);
+
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [pendingOrder, setPendingOrder] = useState(null);
+
+  const [promoCode, setPromoCode] = useState('');
+  const [appliedPromo, setAppliedPromo] = useState(null);
+  const [promoMessage, setPromoMessage] = useState('');
+  const [promoError, setPromoError] = useState(false);
+
+  // --- sync selected session ---
+  useEffect(() => {
+    if (selectedSession) {
+      setMovieSession(selectedSession);
+      setSelectedSeats([]);
+      setRecommendedSeat(null);
+    }
+  }, [selectedSession]);
+
+  // --- fetch seat plan ---
+  useEffect(() => {
+    const fetchSeatPlanData = async () => {
+      if (!movie?.id || !movieSession?.time) return;
+      try {
+        const data = await getSeatPlan(movie.id, movieSession);
+        setSeatPlan(data);
+      } catch (error) {
+        console.error('Error fetching seat plan:', error);
+      }
+    };
+    fetchSeatPlanData();
+  }, [movie?.id, movieSession]);
+
+  // --- derived values used in JSX ---
+  const occupiedSeats = seatPlan || [];
+  const isSoldOut = occupiedSeats.length >= TOTAL_SEATS;
+  const isAnySeatSelected = selectedSeats.length > 0;
+  const selectedSeatText = selectedSeats.map((seat) => seat + 1).join(', ');
+
+  const { subtotal, bookingFee, tax, discount, totalPrice } =
+    calculatePricing(selectedSeats, appliedPromo);
+
+  const handleRecommendSeats = () => {
+    const recs = getRecommendedSeats(numSeats, occupiedSeats);
+    if (!recs) {
+      alert(`No ${numSeats} consecutive seats available in a single row!`);
+      return;
+    }
+    setRecommendedSeat(recs);
+  };
+
+  const handleApplyPromoCode = async () => {
+    if (!promoCode.trim()) {
+      setPromoMessage('Please enter a promo code');
+      setPromoError(true);
+      return;
+    }
+    const result = await ValidatePromoCode(promoCode.trim().toUpperCase());
+    if (result.success) {
+      setAppliedPromo(result.data);
+      setPromoMessage('Promo code applied!');
+      setPromoError(false);
+    } else {
+      setAppliedPromo(null);
+      setPromoMessage(result.message);
+      setPromoError(true);
+    }
+  };
+
+  const handleRemovePromoCode = () => {
+    setAppliedPromo(null);
+    setPromoCode('');
+    setPromoMessage('');
+    setPromoError(false);
+  };
 
   const handleButtonClick = async (e) => {
     e?.preventDefault();
-
     if (!selectedSeats.length) return;
 
     const authenticatedId =
-      user?.id || user?.userId || localStorage.getItem("userId");
+      user?.id || user?.userId || localStorage.getItem('userId');
 
     if (!authenticatedId) {
-      alert("Please log in to complete your booking.");
-      navigate("/login");
+      alert('Please log in to complete your booking.');
+      navigate('/login');
       return;
     }
 
@@ -40,13 +116,13 @@ function SeatPlan({ movie, selectedSession, user }) {
 
       const movieTypes = getMovieTypes(movie.id);
       const movieCast =
-        movie.credits?.cast?.slice(0, 5).map((actor) => actor.name).join(", ") ||
-        "N/A";
+        movie.credits?.cast?.slice(0, 5).map((actor) => actor.name).join(', ') ||
+        'N/A';
 
       const spokenLanguages =
-        movie.spoken_languages?.map((lang) => lang.english_name).join(", ") ||
+        movie.spoken_languages?.map((lang) => lang.english_name).join(', ') ||
         movie.original_language ||
-        "N/A";
+        'N/A';
 
       const order = {
         customerId: authenticatedId,
@@ -59,11 +135,11 @@ function SeatPlan({ movie, selectedSession, user }) {
         movie: {
           id: movie.id,
           title: movie.title,
-          genres: movie.genres.map((genre) => genre.name).join(", "),
+          genres: movie.genres.map((genre) => genre.name).join(', '),
           runtime: movie.runtime,
           language: movie.original_language,
-          price: movie.price, // ✅ movies[0].price was undefined
-          type: movieTypes.join(", "),
+          price: movie.price, // make sure movie.price exists in your data
+          type: movieTypes.join(', '),
           cast: movieCast,
           spokenLanguages,
         },
@@ -94,24 +170,23 @@ function SeatPlan({ movie, selectedSession, user }) {
         setPendingOrder(orderResponse);
         setShowPaymentModal(true);
       } else {
-        console.error("Failed to create order");
+        console.error('Failed to create order');
         alert(
-          "Failed to create booking. The seats might have been taken. Please try again."
+          'Failed to create booking. The seats might have been taken. Please try again.'
         );
       }
     } catch (error) {
-      console.error("Order creation error:", error);
+      console.error('Order creation error:', error);
       alert(
-        "An error occurred while creating your order. Please check your connection."
+        'An error occurred while creating your order. Please check your connection.'
       );
     }
   };
 
-  // ... return JSX
-}
-
+  // ✅ MUST be inside SeatPlan
   const handlePaymentConfirm = async (paymentDetails) => {
     if (!pendingOrder) return;
+
     try {
       const orderId = pendingOrder.orderId;
       const response = await MakePayment(BASE_URL, orderId, paymentDetails);
@@ -123,22 +198,21 @@ function SeatPlan({ movie, selectedSession, user }) {
         alert('Payment failed: ' + (response?.message || 'Please try again.'));
       }
     } catch (error) {
-      console.error("Payment Error:", error);
-      alert("An error occurred during payment.");
+      console.error('Payment Error:', error);
+      alert('An error occurred during payment.');
     }
   };
 
- return (
+  // ✅ return MUST be inside SeatPlan
+  return (
     <div className='flex flex-col items-center'>
-      {/* Header Section */}
       <div className='w-full md:w-1/2 lg:w-2/3 px-6'>
         <h2 className='mb-8 text-2xl font-semibold text-center'>
-          {isSoldOut ? "Session Sold Out" : "Choose your seats"}
+          {isSoldOut ? 'Session Sold Out' : 'Choose your seats'}
         </h2>
       </div>
 
       {isSoldOut ? (
-        /* Sold Out State */
         <div className='text-center p-10 bg-red-50 rounded-lg border border-red-200'>
           <p className='text-red-600 font-bold text-lg mb-4'>
             No seats available for this session.
@@ -154,7 +228,6 @@ function SeatPlan({ movie, selectedSession, user }) {
           </div>
         </div>
       ) : (
-        /* Active Booking State */
         <div className='CinemaPlan w-full flex flex-col items-center'>
           <SeatSelector
             movie={{ occupied: occupiedSeats }}
@@ -177,7 +250,6 @@ function SeatPlan({ movie, selectedSession, user }) {
             <span className='selected-seats font-semibold'>{selectedSeatText}</span>
           </p>
 
-          {/* Pricing Summary & Promo Section */}
           {isAnySeatSelected && (
             <div className='mt-4 w-full max-w-md bg-white p-4 rounded-lg border shadow-sm'>
               <div className='space-y-1 text-sm border-b pb-3 mb-3'>
@@ -205,7 +277,6 @@ function SeatPlan({ movie, selectedSession, user }) {
                 </div>
               </div>
 
-              {/* Promo Code Input */}
               <div className='my-4'>
                 <div className='flex gap-2'>
                   <input
@@ -217,11 +288,17 @@ function SeatPlan({ movie, selectedSession, user }) {
                     className='flex-1 px-3 py-2 border rounded text-sm focus:ring-2 focus:ring-blue-500 outline-none'
                   />
                   {appliedPromo ? (
-                    <button onClick={handleRemovePromoCode} className='bg-red-500 text-white rounded px-4 py-2 text-xs font-bold'>
+                    <button
+                      onClick={handleRemovePromoCode}
+                      className='bg-red-500 text-white rounded px-4 py-2 text-xs font-bold'
+                    >
                       Remove
                     </button>
                   ) : (
-                    <button onClick={handleApplyPromoCode} className='bg-blue-500 text-white rounded px-4 py-2 text-xs font-bold'>
+                    <button
+                      onClick={handleApplyPromoCode}
+                      className='bg-blue-500 text-white rounded px-4 py-2 text-xs font-bold'
+                    >
                       Apply
                     </button>
                   )}
@@ -233,7 +310,6 @@ function SeatPlan({ movie, selectedSession, user }) {
                 )}
               </div>
 
-              {/* Final Buy Button */}
               <button
                 className='w-full bg-green-500 hover:bg-green-600 text-white rounded-lg py-3 font-bold transition-all shadow-lg active:transform active:scale-95'
                 onClick={handleButtonClick}
@@ -244,12 +320,13 @@ function SeatPlan({ movie, selectedSession, user }) {
           )}
 
           {!isAnySeatSelected && (
-            <p className='info text-sm text-gray-400 italic mt-4'>Please select a seat to see pricing</p>
+            <p className='info text-sm text-gray-400 italic mt-4'>
+              Please select a seat to see pricing
+            </p>
           )}
         </div>
       )}
 
-      {/* Modals & Popups */}
       {successPopupVisible && (
         <div className='bg-green-500 text-white px-6 py-3 rounded-full fixed bottom-10 shadow-2xl animate-bounce z-50'>
           Order Successful!
@@ -261,16 +338,15 @@ function SeatPlan({ movie, selectedSession, user }) {
         onClose={() => setShowPaymentModal(false)}
         onConfirm={handlePaymentConfirm}
         priceBreakdown={{
-          subtotal: subtotal,
-          bookingFee: bookingFee,
-          tax: tax,
-          discount: discount,
+          subtotal,
+          bookingFee,
+          tax,
+          discount,
           total: totalPrice,
         }}
       />
     </div>
-
   );
-
+}
 
 export default SeatPlan;

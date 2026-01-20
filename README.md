@@ -1,105 +1,108 @@
-# 🎬 Smart Cinema Booking System
+# Cinema Ticket Booking System
 
-A full-stack cinema booking application with **intelligent showtime and seat recommendations**, built using **React (Frontend) + Spring Boot (Backend)**.
+![cinema](/cinema.gif)
 
----
+Cinema Ticket Booking System is a web application built with React and Java Spring Boot 3.2, allowing users to browse, search, and book movie tickets seamlessly.
 
-## Key Features
+## Table of Contents
 
-### Feature 1 — **Smart Showtime Recommendation (Frontend-Based)**
-The system dynamically recommends the best showtime based on:
+- [Cinema Ticket Booking System](#cinema-ticket-booking-system)
+  - [Table of Contents](#table-of-contents)
+  - [Features](#features)
+  - [Technologies](#technologies)
+  - [Getting Started](#getting-started)
+  - [Steps to Setup the Spring Boot Backend app](#steps-to-setup-the-spring-boot-backend-app)
+  - [Steps to Setup the React Frontend app](#steps-to-setup-the-react-frontend-app)
 
-- **Current system time** — Past sessions are ignored  
-- **Seat availability** — Among future sessions, the one with the **most seats available** is recommended  
-- **Visual Highlighting** — The recommended showtime is:
-  - Highlighted in **green**
-  - Marked with a **“Recommended” badge**
-  - Slightly scaled up for better visibility  
+## Features
 
-This recommendation is currently handled **on the frontend (React)** inside `MovieDetails.js`.
+- **User registration**: For personalization and access to exclusive deals.
+- **Movie Selection**: Browse through a wide selection of available movies.
+- **Movie Search**: Easily find movies by name using the search feature.
+- **Genre Filtering**: Filter movies based on genres for a more tailored browsing experience.
+- **Movie Sessions**: Choose the best time for you to watch a movie.
+- **Seat recommendation**: Recommended for optimal sound quality and viewing experience.  
+- **Seat Selection**: Choose your desired seats for the selected movie.
+- **Booking Management**: Efficiently book seats and store booking information in the database.
+- **Dynamic Seat Updates**: Real-time updates of seat availability based on new bookings and movie sessions.
+- **Movie recommendations**: Movie recommendations for registered users based on their past viewing history and preferences.
 
----
+## Technologies
 
-### Feature 2 — **Best Seat Recommendation (Backend-Based)**
-The backend provides seat recommendations via:
+- Spring Boot 3.2
+- Maven
 
-**Service:**  
-`RecommendationAnalyticsService.java`
+## Getting Started
 
-It suggests the best seats in a hall based on:
-- Central seating preference
-- Proximity to center for optimal viewing
+To get started with this project, you will need to have the following installed on your local machine:
 
-This data can later be integrated into the seat selection UI.
+- JDK 21+
+- Maven 3+
+- MySQL 8+
 
----
+## Steps to Setup the Spring Boot Backend app
 
-## Tech Stack
+1. **Clone the application**
 
-### Frontend
-- React.js
-- Tailwind CSS
-- React Router
-- TMDB API (for movie data)
+```zsh
+git clone https://github.com/EgonSaks/cinema-ticket-booking-system.git
+cd backend
+```
+2. **Installing and Starting MySQL**
 
-### Backend
-- Spring Boot
-- Java 17
-- REST APIs
-- DTO-based responses
+There are different ways to install MySQL. The following covers the easiest methods for [installing and starting MySQL on different platforms](https://dev.mysql.com/doc/mysql-getting-started/en/#mysql-getting-started-installing).
 
----
+3. **Create MySQL database**
 
-## Important Files
+Open a terminal (command prompt in Microsoft Windows) and open a MySQL client as a user who can create new users.
 
-### Frontend Recommendation Logic
-`src/pages/MovieDetails.js`
+For example, on a Mac, use the following command;
 
-Responsible for:
-- Fetching movie sessions
-- Calculating occupancy
-- Filtering past sessions
-- Selecting the future session with **maximum seats available**
-- Highlighting the recommended showtime in UI
+```zsh
+mysql -u root -p
+```
 
----
+```zsh
+mysql> CREATE DATABASE cinema;
+mysql> CREATE USER 'springuser'@'%' IDENTIFIED BY 'ThePassword';
+mysql> GRANT ALL PRIVILEGES ON cinema.* TO 'springuser'@'%';
+mysql> FLUSH PRIVILEGES;
+```
 
-### Backend Analytics Service
-`src/main/java/com/cinema/backend/services/RecommendationAnalyticsService.java`
+[More info how to do it here](https://spring.io/guides/gs/accessing-data-mysql)
 
-Currently provides:
-- Simulated “best session” recommendation (to be upgraded later)
-- Functional best-seat recommendation logic
+4. **Change MySQL username and password as per your MySQL installation**
 
----
+	+ open `src/main/resources/application.properties` file.
 
-## How Recommendation Works (Frontend Logic)
+	+ change `spring.datasource.username` and `spring.datasource.password` properties as per your mysql installation
 
-For each movie:
+5. **Run the app**
 
-1. Fetch all sessions  
-2. Get current time  
-3. Remove past sessions  
-4. Calculate available seats for each session  
-5. Pick the session with **most seats available**  
-6. Mark it as **Recommended** in the UI  
+	You can run the spring boot app by typing the following command
 
----
+	```zsh
+	mvn spring-boot:run
+	```
 
-## Future Improvements
+	The backend application will be available at http://localhost:8080.
 
-Planned enhancements include:
+## Steps to Setup the React Frontend app
 
-- Moving showtime recommendation logic fully to the backend  
-- Storing real session + seat data in MySQL  
-- Machine-learning-based crowd prediction  
-- Personalized recommendations per user  
+1. **Get API Key and API Read Access Token for accessing movies data**
 
----
+     + [API KEY](https://www.themoviedb.org/settings/api)
 
-## How to Run
+2. **Add API KEY and API Read Access Token to .env**
 
-### Backend
-```bash
-mvn spring-boot:run
+    + open `frontend/.env`
+    + add `REACT_APP_API_KEY=YOUR_API_KEY` and `REACT_APP_ACCESS_TOKEN=YOUR_ACCESS_TOKEN` properties as per your data from [themovies.org](https://www.themoviedb.org/settings/api)
 
+3. **Run the app**
+```zsh
+cd frontend
+npm install
+npm start
+```
+
+The frontend application will be available at http://localhost:3000.
